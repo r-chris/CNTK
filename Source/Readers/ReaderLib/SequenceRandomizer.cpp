@@ -11,7 +11,6 @@
 #include <algorithm>
 #include <utility>
 #include <deque>
-#include "RandomOrdering.h"
 
 namespace Microsoft { namespace MSR { namespace CNTK {
 
@@ -45,7 +44,7 @@ namespace Microsoft { namespace MSR { namespace CNTK {
     // Resets the current sweep according to the randomization seed provided.
     void SequenceRandomizer::Reset(size_t randSeed)
     {
-        srand((unsigned int)randSeed);
+        m_rng.seed((unsigned long)randSeed);
 
         m_sequenceWindow.clear();
         m_chunkWindow.clear();
@@ -191,10 +190,12 @@ namespace Microsoft { namespace MSR { namespace CNTK {
             size_t posBegin = m_randomizedChunks[chunkWindowBegin].m_sequencePositionStart;
             size_t posEnd = m_randomizedChunks[chunkWindowEnd - 1].SequenceEndPosition();
 
+            std::uniform_int_distribution<size_t> distribution(posBegin, std::max(posBegin, posEnd - 1));
+
             for (;;)
             {
                 // Pick a sequence position from [posBegin, posEnd)
-                const size_t j = rand(posBegin, posEnd);
+                const size_t j = distribution(m_rng);
 
                 // Try again if the sequence currently at j cannot be placed at position i.
                 if (!IsValidForPosition(t, GetRandomizedSequenceDescriptionBySequenceId(j)))
