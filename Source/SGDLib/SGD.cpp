@@ -17,6 +17,7 @@
 
 #include "SimpleDistGradAggregator.h"
 #include "ProgressTracing.h"
+#include "LatticeFreeMMINode.h"
 
 #include <map>
 #include <set>
@@ -506,7 +507,7 @@ void SGD<ElemType>::TrainOrAdaptModel(int startEpoch, ComputationNetworkPtr net,
 
         if (validationSetDataReader != trainSetDataReader && validationSetDataReader != nullptr)
         {
-            SimpleEvaluator<ElemType> evalforvalidation(net, m_mpi, m_enableDistributedMBReading);
+            SimpleEvaluator<ElemType> evalforvalidation(net, m_mpi, m_enableDistributedMBReading, 100, 0, 0, m_useTwoPassTraining ? m_maxSamplesInRAM : SIZE_MAX, 1, m_useTwoPassTraining);
             vector<wstring> cvSetTrainAndEvalNodes;
             if (criterionNodes.size() > 0)
             {
@@ -814,8 +815,8 @@ size_t SGD<ElemType>::TrainOneEpoch(ComputationNetworkPtr net,
     size_t numSubminibatchesNeeded = DataReaderHelpers::GetNumSubminibatchesNeeded<ElemType>(trainSetDataReader, m_maxSamplesInRAM, m_numSubminiBatches, tunedMBSize);
 
     // this is non-trivial, we need a manager object to handle this
-    if (numSubminibatchesNeeded > 1)
-        smbDispatcher.Init(net, learnableNodes, criterionNodes, evaluationNodes);
+    if (numSubminibatchesNeeded > 1 || m_useTwoPassTraining)
+        smbDispatcher.Init(net, learnableNodes, criterionNodes, evaluationNodes, m_useTwoPassTraining);
 
     // The following is a special feature only supported by the Kaldi2Reader for more efficient sequence training.
     // This attemps to compute the error signal for the whole utterance, which will
@@ -843,7 +844,7 @@ size_t SGD<ElemType>::TrainOneEpoch(ComputationNetworkPtr net,
         fprintf(stderr, ", distributed reading is ENABLED");
     }
 
-    if (numSubminibatchesNeeded > 1)
+    if (numSubminibatchesNeeded > 1 || m_useTwoPassTraining)
     {
         if (m_maxSamplesInRAM < SIZE_MAX)
             fprintf(stderr, ", with maximum %d samples in RAM", (int)m_maxSamplesInRAM);
@@ -866,15 +867,15 @@ size_t SGD<ElemType>::TrainOneEpoch(ComputationNetworkPtr net,
     // for differential logging, we keep the previous criterion values around
     EpochCriterion         epochCriterionLastLogged  = epochCriterion;
     vector<EpochCriterion> epochEvalErrorsLastLogged = epochEvalErrors;
-
     bool noMoreSamplesToProcess = false;
+    auto lfMMINode = dynamic_cast<LatticeFreeMMINode<ElemType>*>(criterionNodes[0].get());
     for (;;)
     {
         // get minibatch
         // TODO: is it guaranteed that the GPU is already completed at this point, is it safe to overwrite the buffers?
         size_t actualMBSize = 0;
         bool wasDataRead = DataReaderHelpers::GetMinibatchIntoNetwork<ElemType>(*trainSetDataReader, net, criterionNodes[0],
-                                                                                useDistributedMBReading, useParallelTrain, *inputMatrices, actualMBSize, m_mpi);
+                                                                                useDistributedMBReading, useParallelTrain, *inputMatrices, actualMBSize, m_mpi, m_useTwoPassTraining);
         if (!wasDataRead && (!useDistributedMBReading || noMoreSamplesToProcess)) // in case of distributed reading, we do a few more loops until all ranks have completed
             break;                                                                // end of epoch
 
@@ -926,6 +927,18 @@ size_t SGD<ElemType>::TrainOneEpoch(ComputationNetworkPtr net,
 
             // We optionally break the minibatch into sub-minibatches.
             // This, when enabled, is used when a full minibatch does not fit into GPU RAM.
+            if (m_useTwoPassTraining)
+            {
+                if (m_maxSamplesInRAM >= SIZE_MAX)
+                    LogicError("m_maxSamplesInRAM should not be larger than SIZE_MAX when m_useTwoPassTraining is true.");
+
+                numSubminibatchesNeeded = (actualMBSize + m_maxSamplesInRAM - 1) / m_maxSamplesInRAM;
+                if (lfMMINode)
+                {
+                    lfMMINode->SetTotalFrameNumberofCurrentMinibatch(actualMBSize);
+                }
+            }
+            
             size_t actualNumSubminibatches = numSubminibatchesNeeded <= 1 ? 1 : smbDispatcher.GetMinibatchIntoCache(*trainSetDataReader, *net, *inputMatrices, numSubminibatchesNeeded);
             for (size_t ismb = 0; ismb < actualNumSubminibatches; ismb++)
             {
@@ -954,13 +967,35 @@ size_t SGD<ElemType>::TrainOneEpoch(ComputationNetworkPtr net,
                 // backprop
                 // ===========================================================
 
-                if (learnRatePerSample > 0.01 * m_minLearnRate) // only compute gradient when learning rate is large enough
+                if (!(m_useTwoPassTraining && lfMMINode && actualNumSubminibatches > 1))
+                {
+                    if (learnRatePerSample > 0.01 * m_minLearnRate) // only compute gradient when learning rate is large enough
+                        net->Backprop(criterionNodes[0]);
+
+                    // house-keeping for sub-minibatching
+                    if (actualNumSubminibatches > 1)
+                        smbDispatcher.DoneWithCurrentSubMinibatch(ismb); // page state out
+                }
+            }                                                        // end sub-minibatch loop
+
+            if (m_useTwoPassTraining && lfMMINode && actualNumSubminibatches > 1 && learnRatePerSample > 0.01 * m_minLearnRate)
+            {
+                for (size_t ismb = 0; ismb < actualNumSubminibatches; ismb++)
+                {
+                    smbDispatcher.GetSubMinibatchToNet(ismb); // get sub-minibatch from full-size one
+                    ComputationNetwork::BumpEvalTimeStamp(featureNodes);
+                    ComputationNetwork::BumpEvalTimeStamp(labelNodes);
+
+                    net->ForwardProp(evaluationNodes); // the bulk of this evaluation is reused in ComputeGradient() below
+                    net->ForwardProp(criterionNodes[0]);
+
                     net->Backprop(criterionNodes[0]);
 
-                // house-keeping for sub-minibatching
-                if (actualNumSubminibatches > 1)
+                    // house-keeping for sub-minibatching
                     smbDispatcher.DoneWithCurrentSubMinibatch(ismb); // page state out
-            }                                                        // end sub-minibatch loop
+                }
+            }
+
             if (actualNumSubminibatches > 1)
                 smbDispatcher.DoneWithCurrentMinibatch();
         } // if (actualMBSize > 0)
@@ -1326,7 +1361,7 @@ bool SGD<ElemType>::PreCompute(ComputationNetworkPtr net,
     const size_t numIterationsBeforePrintingProgress = 100;
     size_t numItersSinceLastPrintOfProgress = 0;
     size_t actualMBSizeDummy;
-    while (DataReaderHelpers::GetMinibatchIntoNetwork<ElemType>(*trainSetDataReader, net, nullptr, false, false, *inputMatrices, actualMBSizeDummy, m_mpi))
+    while (DataReaderHelpers::GetMinibatchIntoNetwork<ElemType>(*trainSetDataReader, net, nullptr, false, false, *inputMatrices, actualMBSizeDummy, m_mpi, m_useTwoPassTraining))
     {
         // TODO: move these into GetMinibatchIntoNetwork()  --but those are passed around; necessary? Can't we get them from 'net'?
         ComputationNetwork::BumpEvalTimeStamp(featureNodes);
@@ -2394,6 +2429,7 @@ SGDParams::SGDParams(const ConfigRecordType& configSGD, size_t sizeofElemType)
     m_truncated = configSGD(L"truncated", false);
     m_maxSamplesInRAM = configSGD(L"maxSamplesInRAM", (size_t) SIZE_MAX);
     m_numSubminiBatches = configSGD(L"numSubminibatches", (size_t) 1);
+    m_useTwoPassTraining = configSGD(L"useTwoPassTraining", false);
 
     // the number of samples in each epoch (0 means, use all the samples in each epoch).
     m_epochSize = configSGD(L"epochSize", (size_t) 0);
