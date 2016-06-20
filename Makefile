@@ -685,6 +685,26 @@ endif
 endif
 
 ########################################
+# LibEval
+########################################
+
+EVALLIB_SRC =\
+  $(SOURCEDIR)/EvalDll/CNTKEval.cpp \
+  $(SOURCEDIR)/CNTK/BrainScript/BrainScriptEvaluator.cpp \
+  $(SOURCEDIR)/CNTK/BrainScript/BrainScriptParser.cpp
+
+EVALLIB_OBJ := $(patsubst %.cpp, $(OBJDIR)/%.o, $(EVALLIB_SRC))
+
+EVALLIB := $(LIBDIR)/LibEval.so
+ALL+=$(EVALLIB)
+SRC+=$(EVALLIB_SRC)
+
+$(EVALLIB): $(EVALLIB_OBJ) | $(CNTKMATH_LIB)
+	@echo $(SEPARATOR)
+	@echo Building $(EVALLIB) for $(ARCH) with build type $(BUILDTYPE)
+	$(CXX) $(LDFLAGS) -shared $(patsubst %,-L%, $(LIBDIR) $(LIBPATH) $(NVMLPATH)) $(patsubst %,$(RPATH)%, $(ORIGINDIR) $(LIBPATH)) -o $@ $^ $(LIBS) -l$(CNTKMATH)
+
+########################################
 # cntk
 ########################################
 
