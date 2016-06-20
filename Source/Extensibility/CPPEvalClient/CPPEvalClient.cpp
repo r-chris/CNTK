@@ -6,7 +6,7 @@
 //
 
 #include "stdafx.h"
-#include "eval.h"
+#include "Eval.h"
 
 using namespace Microsoft::MSR::CNTK;
 
