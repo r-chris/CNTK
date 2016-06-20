@@ -342,13 +342,13 @@ $(EVALLIB): $(EVALLIB_OBJ) | $(CNTKMATH_LIB)
 # Eval Sample client
 ########################################
 EVAL_SAMPLE_CLIENT_SRC =\
-	Extensibility/CPPEvalClient/CppEvalClient.cpp 
+	$(SOURCEDIR)/Extensibility/CPPEvalClient/CPPEvalClient.cpp 
 
-EVAL_SAMPLE_CLIENT:=$(BINDIR)/CppEvalClient
-EVAL_SAMPLE_CLIENT_OBJ := $(patsubst %.cpp, $(OBJDIR)/%.o, $(EVAL_SAMPLE_CLIENT_SRC)))
+EVAL_SAMPLE_CLIENT:=$(BINDIR)/CPPEvalClient
+EVAL_SAMPLE_CLIENT_OBJ := $(patsubst %.cpp, $(OBJDIR)/%.o, $(EVAL_SAMPLE_CLIENT_SRC))
 
 ALL+=$(EVAL_SAMPLE_CLIENT)
-SRC+=$(EVAL_SAMPLE_CLIENT__SRC)
+SRC+=$(EVAL_SAMPLE_CLIENT_SRC)
 
 RPATH=-Wl,-rpath,
 
@@ -358,7 +358,7 @@ $(EVAL_SAMPLE_CLIENT): $(EVAL_SAMPLE_CLIENT_OBJ) | $(EVALLIB)
 	@echo building $(EVAL_SAMPLE_CLIENT) for $(ARCH) with build type $(BUILDTYPE)
 	$(CXX) $(LDFLAGS) $(patsubst %,-L%, $(LIBDIR) $(LIBPATH) $(NVMLPATH)) $(patsubst %,$(RPATH)%, $(ORIGINLIBDIR) $(LIBPATH)) -o $@ $^ -l$(EVALLIB) 
 
-
+########################################
 # CNTKLibrary
 ########################################
 
