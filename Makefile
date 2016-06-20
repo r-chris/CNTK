@@ -318,6 +318,26 @@ $(CNTKMATH_LIB): $(MATH_OBJ)
 	@mkdir -p $(dir $@)
 	$(CXX) $(LDFLAGS) -shared $(patsubst %,-L%, $(LIBPATH) $(NVMLPATH)) $(patsubst %,$(RPATH)%, $(ORIGINDIR) $(LIBPATH)) -o $@ $^ $(LIBS) -fopenmp
 
+########################################
+# LibEval
+########################################
+
+EVALLIB_SRC =\
+  $(SOURCEDIR)/EvalDll/CNTKEval.cpp \
+  $(SOURCEDIR)/CNTK/BrainScript/BrainScriptEvaluator.cpp \
+  $(SOURCEDIR)/CNTK/BrainScript/BrainScriptParser.cpp
+
+EVALLIB_OBJ := $(patsubst %.cpp, $(OBJDIR)/%.o, $(EVALLIB_SRC))
+
+EVALLIB := $(LIBDIR)/LibEval.so
+ALL+=$(EVALLIB)
+SRC+=$(EVALLIB_SRC)
+
+$(EVALLIB): $(EVALLIB_OBJ) | $(CNTKMATH_LIB)
+	@echo $(SEPARATOR)
+	@echo Building $(EVALLIB) for $(ARCH) with build type $(BUILDTYPE)
+	$(CXX) $(LDFLAGS) -shared $(patsubst %,-L%, $(LIBDIR) $(LIBPATH) $(NVMLPATH)) $(patsubst %,$(RPATH)%, $(ORIGINDIR) $(LIBPATH)) -o $@ $^ $(LIBS) -l$(CNTKMATH)
+
 # CNTKLibrary
 ########################################
 
@@ -683,26 +703,6 @@ endif
   COMMON_FLAGS += -DCNTK_PARALLEL_TRAINING_SUPPORT
   # temporarily adding to 1bit, need to work with others to fix it
 endif
-
-########################################
-# LibEval
-########################################
-
-EVALLIB_SRC =\
-  $(SOURCEDIR)/EvalDll/CNTKEval.cpp \
-  $(SOURCEDIR)/CNTK/BrainScript/BrainScriptEvaluator.cpp \
-  $(SOURCEDIR)/CNTK/BrainScript/BrainScriptParser.cpp
-
-EVALLIB_OBJ := $(patsubst %.cpp, $(OBJDIR)/%.o, $(EVALLIB_SRC))
-
-EVALLIB := $(LIBDIR)/LibEval.so
-ALL+=$(EVALLIB)
-SRC+=$(EVALLIB_SRC)
-
-$(EVALLIB): $(EVALLIB_OBJ) | $(CNTKMATH_LIB)
-	@echo $(SEPARATOR)
-	@echo Building $(EVALLIB) for $(ARCH) with build type $(BUILDTYPE)
-	$(CXX) $(LDFLAGS) -shared $(patsubst %,-L%, $(LIBDIR) $(LIBPATH) $(NVMLPATH)) $(patsubst %,$(RPATH)%, $(ORIGINDIR) $(LIBPATH)) -o $@ $^ $(LIBS) -l$(CNTKMATH)
 
 ########################################
 # cntk
