@@ -37,6 +37,9 @@ int _tmain(int argc, _TCHAR* argv[])
     std::string app(wapp.begin(), wapp.end());
     std::string path = app.substr(0, app.rfind("\\"));
 
+    IEvaluateModel<float> *model;
+
+#ifdef _WIN32
     // Load the eval library
     auto hModule = LoadLibrary(L"evaldll.dll");
     if (hModule == nullptr)
@@ -51,9 +54,11 @@ int _tmain(int argc, _TCHAR* argv[])
     auto procAddress = GetProcAddress(hModule, func.c_str());
     auto getEvalProc = (GetEvalProc<float>)procAddress;
 
-    // Native model evaluation instance
-    IEvaluateModel<float> *model;
+    // Native model evaluation instance   
     getEvalProc(&model);
+#else // on Linux
+    GetEvalF(&model)
+#endif
 
     // This relative path assumes launching from CNTK's binary folder
     const std::string modelWorkingDirectory = path + "\\..\\..\\Examples\\Image\\MNIST\\Data\\";
