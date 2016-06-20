@@ -1658,7 +1658,7 @@ namespace CNTK
         void GetSmoothedGradients(std::unordered_map<Variable, std::shared_ptr<Microsoft::MSR::CNTK::Matrix<ElementType>>>& map)
         {
             auto gradients = SmoothedGradients();
-            const unordered_set<Variable>& keys = gradients.Keys();
+            const std::unordered_set<Variable>& keys = gradients.Keys();
 
             for (auto & key : keys)
             {
