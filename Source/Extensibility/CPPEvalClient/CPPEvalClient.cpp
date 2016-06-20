@@ -29,7 +29,8 @@ typedef std::map<std::wstring, std::vector<float>*> Layer;
 /// first run the example in <CNTK>/Examples/Image/MNIST. Once the model file 01_OneHidden is created,
 /// you can run this client.
 /// This program demonstrates the usage of the Evaluate method requiring the input and output layers as parameters.
-int _tmain(int argc, _TCHAR* argv[])
+int wmain(int argc, wchar_t* argv[])
+// int _tmain(int argc, _TCHAR* argv[])
 {
     // Get the binary path (current working directory)
     argc = 0;
@@ -109,3 +110,23 @@ int _tmain(int argc, _TCHAR* argv[])
 
     return 0;
 }
+
+#ifdef __UNIX__
+/// UNIX main function converts arguments in UTF-8 encoding and passes to Visual-Studio style wmain() which takes wchar_t strings.
+int main(int argc, char* argv[])
+{
+    // TODO: change to STL containers
+    wchar_t** wargs = new wchar_t*[argc];
+    for (int i = 0; i < argc; ++i)
+    {
+        wargs[i] = new wchar_t[strlen(argv[i]) + 1];
+        size_t ans = ::mbstowcs(wargs[i], argv[i], strlen(argv[i]) + 1);
+        assert(ans == strlen(argv[i]));
+    }
+    int ret = wmain(argc, wargs);
+    for (int i = 0; i < argc; ++i)
+        delete[] wargs[i];
+    delete[] wargs;
+    return ret;
+}
+#endif
