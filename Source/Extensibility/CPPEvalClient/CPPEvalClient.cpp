@@ -58,7 +58,7 @@ int wmain(int argc, wchar_t* argv[])
     // Native model evaluation instance   
     getEvalProc(&model);
 #else // on Linux
-    GetEvalF(&model)
+    GetEvalF(&model);
 #endif
 
     // This relative path assumes launching from CNTK's binary folder
@@ -103,7 +103,7 @@ int wmain(int argc, wchar_t* argv[])
 
     // Output the results
     fprintf(stderr, "Layer '%ls' output:\n", outputLayerName.c_str());
-    for each (auto& value in outputs)
+    for (auto& value : outputs)
     {
         fprintf(stderr, "%f\n", value);
     }

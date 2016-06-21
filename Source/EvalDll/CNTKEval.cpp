@@ -26,6 +26,7 @@
 #include "NoRandomizer.h"
 #include "HeapMemoryProvider.h"
 #include "InputAndParamNodes.h"
+#include "latticearchive.h"
 
 // TODO: Temporary mechanism to enable memory sharing for
 // node output value matrices. This will go away when the

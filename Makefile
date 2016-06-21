@@ -319,46 +319,6 @@ $(CNTKMATH_LIB): $(MATH_OBJ)
 	$(CXX) $(LDFLAGS) -shared $(patsubst %,-L%, $(LIBPATH) $(NVMLPATH)) $(patsubst %,$(RPATH)%, $(ORIGINDIR) $(LIBPATH)) -o $@ $^ $(LIBS) -fopenmp
 
 ########################################
-# LibEval
-########################################
-
-EVALLIB_SRC =\
-  $(SOURCEDIR)/EvalDll/CNTKEval.cpp \
-  $(SOURCEDIR)/CNTK/BrainScript/BrainScriptEvaluator.cpp \
-  $(SOURCEDIR)/CNTK/BrainScript/BrainScriptParser.cpp
-
-EVALLIB_OBJ := $(patsubst %.cpp, $(OBJDIR)/%.o, $(EVALLIB_SRC))
-
-EVALLIB := $(LIBDIR)/LibEval.so
-ALL+=$(EVALLIB)
-SRC+=$(EVALLIB_SRC)
-
-$(EVALLIB): $(EVALLIB_OBJ) | $(CNTKMATH_LIB)
-	@echo $(SEPARATOR)
-	@echo Building $(EVALLIB) for $(ARCH) with build type $(BUILDTYPE)
-	$(CXX) $(LDFLAGS) -shared $(patsubst %,-L%, $(LIBDIR) $(LIBPATH) $(NVMLPATH)) $(patsubst %,$(RPATH)%, $(ORIGINDIR) $(LIBPATH)) -o $@ $^ $(LIBS) -l$(CNTKMATH)
-
-########################################
-# Eval Sample client
-########################################
-EVAL_SAMPLE_CLIENT_SRC =\
-	$(SOURCEDIR)/Extensibility/CPPEvalClient/CPPEvalClient.cpp 
-
-EVAL_SAMPLE_CLIENT:=$(BINDIR)/CPPEvalClient
-EVAL_SAMPLE_CLIENT_OBJ := $(patsubst %.cpp, $(OBJDIR)/%.o, $(EVAL_SAMPLE_CLIENT_SRC))
-
-ALL+=$(EVAL_SAMPLE_CLIENT)
-SRC+=$(EVAL_SAMPLE_CLIENT_SRC)
-
-RPATH=-Wl,-rpath,
-
-$(EVAL_SAMPLE_CLIENT): $(EVAL_SAMPLE_CLIENT_OBJ) | $(EVALLIB)
-	@echo $(SEPARATOR)
-	@mkdir -p $(dir $@)
-	@echo building $(EVAL_SAMPLE_CLIENT) for $(ARCH) with build type $(BUILDTYPE)
-	$(CXX) $(LDFLAGS) $(patsubst %,-L%, $(LIBDIR) $(LIBPATH) $(NVMLPATH)) $(patsubst %,$(RPATH)%, $(ORIGINLIBDIR) $(LIBPATH)) -o $@ $^ -l$(EVALLIB) 
-
-########################################
 # CNTKLibrary
 ########################################
 
@@ -425,6 +385,7 @@ $(CNTKLIBRARY_LIB): $(CNTKLIBRARY_OBJ) | $(CNTKMATH_LIB)
 	@echo building output for $(ARCH) with build type $(BUILDTYPE)
 	$(CXX) $(LDFLAGS) -shared $(patsubst %,-L%, $(LIBDIR) $(LIBPATH) $(NVMLPATH)) $(patsubst %,$(RPATH)%, $(ORIGINDIR) $(LIBPATH)) -o $@ $^ $(LIBS) -l$(CNTKMATH)
 
+########################################
 # CNTKLibrary tests
 ########################################
 
@@ -449,6 +410,62 @@ $(CNTKLIBRARY_TESTS): $(CNTKLIBRARY_TESTS_OBJ) | $(CNTKLIBRARY_LIB)
 	@echo building output for $(ARCH) with build type $(BUILDTYPE)
 	$(CXX) $(LDFLAGS) $(patsubst %,-L%, $(LIBDIR) $(LIBPATH) $(NVMLPATH)) $(patsubst %,$(RPATH)%, $(ORIGINLIBDIR) $(LIBPATH)) -o $@ $^ $(LIBS) -l$(CNTKLIBRARY) -l$(CNTKMATH)
 
+########################################
+# LibEval
+########################################
+
+EVALLIB_SRC =\
+	$(SOURCEDIR)/EvalDll/CNTKEval.cpp \
+	$(SOURCEDIR)/CNTK/BrainScript/BrainScriptEvaluator.cpp \
+	$(SOURCEDIR)/CNTK/BrainScript/BrainScriptParser.cpp \
+	$(SOURCEDIR)/CNTK/ModelEditLanguage.cpp \
+	$(SOURCEDIR)/ComputationNetworkLib/ComputationNetworkEvaluation.cpp \
+	$(SOURCEDIR)/SGDLib/Profiler.cpp \
+	$(SOURCEDIR)/SGDLib/SGD.cpp \
+	$(SOURCEDIR)/ActionsLib/TrainActions.cpp \
+	$(SOURCEDIR)/ActionsLib/EvalActions.cpp \
+	$(SOURCEDIR)/ActionsLib/OtherActions.cpp \
+	$(SOURCEDIR)/ActionsLib/SpecialPurposeActions.cpp \
+	$(SOURCEDIR)/ActionsLib/NetworkFactory.cpp \
+	$(SOURCEDIR)/ActionsLib/NetworkDescriptionLanguage.cpp \
+	$(SOURCEDIR)/ActionsLib/SimpleNetworkBuilder.cpp \
+	$(SOURCEDIR)/ActionsLib/NDLNetworkBuilder.cpp 
+
+EVALLIB_SRC+=$(COMPUTATION_NETWORK_LIB_SRC)
+EVALLIB_SRC+=$(CNTK_COMMON_SRC)
+EVALLIB_SRC+=$(SEQUENCE_TRAINING_LIB_SRC)
+
+EVALLIB_OBJ := $(patsubst %.cpp, $(OBJDIR)/%.o, $(EVALLIB_SRC))
+
+EVALLIB_NAME := eval
+EVALLIB := $(LIBDIR)/libeval.so
+ALL+=$(EVALLIB)
+SRC+=$(EVALLIB_SRC)
+
+$(EVALLIB): $(EVALLIB_OBJ) | $(CNTKMATH_LIB)
+	@echo $(SEPARATOR)
+	@echo Building $(EVALLIB) for $(ARCH) with build type $(BUILDTYPE)
+	$(CXX) $(LDFLAGS) -shared $(patsubst %,-L%, $(LIBDIR) $(LIBPATH) $(NVMLPATH)) $(patsubst %,$(RPATH)%, $(ORIGINDIR) $(LIBPATH)) -o $@ $^ $(LIBS) -l$(CNTKMATH)
+
+########################################
+# Eval Sample client
+########################################
+EVAL_SAMPLE_CLIENT_SRC =\
+	$(SOURCEDIR)/Extensibility/CPPEvalClient/CPPEvalClient.cpp 
+
+EVAL_SAMPLE_CLIENT:=$(BINDIR)/cppevalclient
+EVAL_SAMPLE_CLIENT_OBJ := $(patsubst %.cpp, $(OBJDIR)/%.o, $(EVAL_SAMPLE_CLIENT_SRC))
+
+ALL+=$(EVAL_SAMPLE_CLIENT)
+SRC+=$(EVAL_SAMPLE_CLIENT_SRC)
+
+RPATH=-Wl,-rpath,
+
+$(EVAL_SAMPLE_CLIENT): $(EVAL_SAMPLE_CLIENT_OBJ) | $(EVALLIB)
+	@echo $(SEPARATOR)
+	@mkdir -p $(dir $@)
+	@echo building $(EVAL_SAMPLE_CLIENT) for $(ARCH) with build type $(BUILDTYPE)
+	$(CXX) $(LDFLAGS) $(patsubst %,-L%, $(LIBDIR) $(LIBPATH) $(NVMLPATH)) $(patsubst %,$(RPATH)%, $(ORIGINLIBDIR) $(LIBPATH)) -o $@ $^ $(LIBS) -l$(EVALLIB_NAME) -l$(CNTKMATH)
 # BinaryReader plugin
 ########################################
 
