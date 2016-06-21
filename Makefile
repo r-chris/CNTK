@@ -435,7 +435,7 @@ EVALLIB_SRC+=$(COMPUTATION_NETWORK_LIB_SRC)
 EVALLIB_SRC+=$(CNTK_COMMON_SRC)
 EVALLIB_SRC+=$(SEQUENCE_TRAINING_LIB_SRC)
 
-EVALLIB_OBJ := $(patsubst %.cpp, $(OBJDIR)/%.o, $(EVALLIB_SRC))
+EVALLIB_OBJ := $(patsubst %.cu, $(OBJDIR)/%.o, $(patsubst %.cpp, $(OBJDIR)/%.o, $(EVALLIB_SRC)))
 
 EVALLIB_NAME := eval
 EVALLIB := $(LIBDIR)/libeval.so
@@ -445,7 +445,7 @@ SRC+=$(EVALLIB_SRC)
 $(EVALLIB): $(EVALLIB_OBJ) | $(CNTKMATH_LIB)
 	@echo $(SEPARATOR)
 	@echo Building $(EVALLIB) for $(ARCH) with build type $(BUILDTYPE)
-	$(CXX) $(LDFLAGS) -shared $(patsubst %,-L%, $(LIBDIR) $(LIBPATH) $(NVMLPATH)) $(patsubst %,$(RPATH)%, $(ORIGINDIR) $(LIBPATH)) -o $@ $^ $(LIBS) -l$(CNTKMATH)
+	$(CXX) $(LDFLAGS) -shared $(patsubst %,-L%, $(LIBDIR) $(LIBPATH) $(NVMLPATH)) $(patsubst %,$(RPATH)%, $(ORIGINDIR) $(LIBPATH)) -o $@ $^ $(LIBS)
 
 ########################################
 # Eval Sample client
@@ -466,6 +466,8 @@ $(EVAL_SAMPLE_CLIENT): $(EVAL_SAMPLE_CLIENT_OBJ) | $(EVALLIB)
 	@mkdir -p $(dir $@)
 	@echo building $(EVAL_SAMPLE_CLIENT) for $(ARCH) with build type $(BUILDTYPE)
 	$(CXX) $(LDFLAGS) $(patsubst %,-L%, $(LIBDIR) $(LIBPATH) $(NVMLPATH)) $(patsubst %,$(RPATH)%, $(ORIGINLIBDIR) $(LIBPATH)) -o $@ $^ $(LIBS) -l$(EVALLIB_NAME) -l$(CNTKMATH)
+
+########################################
 # BinaryReader plugin
 ########################################
 
