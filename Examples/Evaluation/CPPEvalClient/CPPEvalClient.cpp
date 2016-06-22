@@ -65,6 +65,10 @@ int wmain(int argc, wchar_t* argv[])
     const std::string modelWorkingDirectory = path + "\\..\\..\\Examples\\Image\\MNIST\\Data\\";
     const std::string modelFilePath = modelWorkingDirectory + "..\\Output\\Models\\01_OneHidden";
 
+#ifndef _WIN32
+    std::replace(begin(modelFilePath), end(modelFilePath), '\\', '/');
+#endif
+
     // Load model with desired outputs
     std::string networkConfiguration;
     // Uncomment the following line to re-define the outputs (include h1.z AND the output ol.z)
