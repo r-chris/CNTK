@@ -58,7 +58,7 @@ int wmain(int argc, wchar_t* argv[])
     // Native model evaluation instance   
     getEvalProc(&model);
 
-    // This relative path assumes launching from CNTK's binary folder
+    // This relative path assumes launching from CNTK's binary folder, e.g. x64\Release
     const std::string modelWorkingDirectory = path + "\\..\\..\\Examples\\Image\\MNIST\\Data\\";
     std::string modelFilePath = modelWorkingDirectory + "..\\Output\\Models\\01_OneHidden";
 
@@ -66,8 +66,8 @@ int wmain(int argc, wchar_t* argv[])
     path = app.substr(0, app.rfind("/"));
     GetEvalF(&model);
 
-    // This relative path assumes launching from CNTK's binary folder
-    const std::string modelWorkingDirectory = path + "/../Examples/Image/MNIST/Data/";
+    // This relative path assumes launching from CNTK's binary folder, e.g. build/release/bin/
+    const std::string modelWorkingDirectory = path + "/../../../Examples/Image/MNIST/Data/";
     std::string modelFilePath = modelWorkingDirectory + "../Output/Models/01_OneHidden";
 #endif
 
