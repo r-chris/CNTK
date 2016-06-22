@@ -451,7 +451,7 @@ $(EVALLIB): $(EVALLIB_OBJ) | $(CNTKMATH_LIB)
 # Eval Sample client
 ########################################
 EVAL_SAMPLE_CLIENT_SRC =\
-	$(SOURCEDIR)/Extensibility/CPPEvalClient/CPPEvalClient.cpp 
+	$(SOURCEDIR)/../Examples/Evaluation/CPPEvalClient/CPPEvalClient.cpp 
 
 EVAL_SAMPLE_CLIENT:=$(BINDIR)/cppevalclient
 EVAL_SAMPLE_CLIENT_OBJ := $(patsubst %.cpp, $(OBJDIR)/%.o, $(EVAL_SAMPLE_CLIENT_SRC))

@@ -36,11 +36,11 @@ int wmain(int argc, wchar_t* argv[])
     argc = 0;
     std::wstring wapp(argv[0]);
     std::string app(wapp.begin(), wapp.end());
-    std::string path = app.substr(0, app.rfind("\\"));
-
+    std::string path; 
     IEvaluateModel<float> *model;
 
 #ifdef _WIN32
+    path = app.substr(0, app.rfind("\\"));
     // Load the eval library
     auto hModule = LoadLibrary(L"evaldll.dll");
     if (hModule == nullptr)
@@ -57,16 +57,18 @@ int wmain(int argc, wchar_t* argv[])
 
     // Native model evaluation instance   
     getEvalProc(&model);
-#else // on Linux
-    GetEvalF(&model);
-#endif
 
     // This relative path assumes launching from CNTK's binary folder
     const std::string modelWorkingDirectory = path + "\\..\\..\\Examples\\Image\\MNIST\\Data\\";
-    const std::string modelFilePath = modelWorkingDirectory + "..\\Output\\Models\\01_OneHidden";
+    std::string modelFilePath = modelWorkingDirectory + "..\\Output\\Models\\01_OneHidden";
 
-#ifndef _WIN32
-    std::replace(begin(modelFilePath), end(modelFilePath), '\\', '/');
+#else // on Linux
+    path = app.substr(0, app.rfind("/"));
+    GetEvalF(&model);
+
+    // This relative path assumes launching from CNTK's binary folder
+    const std::string modelWorkingDirectory = path + "/../Examples/Image/MNIST/Data/";
+    std::string modelFilePath = modelWorkingDirectory + "../Output/Models/01_OneHidden";
 #endif
 
     // Load model with desired outputs
